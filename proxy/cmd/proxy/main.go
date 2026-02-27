@@ -113,6 +113,26 @@ func main() {
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
+	// Detect HTTP/HTTPS proxy from environment
+	proxyEnvVars := []string{"HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"}
+	var detectedProxy bool
+	for _, env := range proxyEnvVars {
+		if val := os.Getenv(env); val != "" {
+			if !detectedProxy {
+				logger.Println("⚠️  HTTP/HTTPS proxy detected! All outbound API requests will be routed through:")
+				detectedProxy = true
+			}
+			logger.Printf("   %s=%s", env, val)
+		}
+	}
+	if !detectedProxy {
+		logger.Println("⚠️  No HTTP/HTTPS proxy detected. If you are behind a firewall, API calls may fail!")
+		logger.Println("   Set proxy environment variables before starting:")
+		logger.Printf("     export HTTP_PROXY=http://your-proxy:port")
+		logger.Printf("     export HTTPS_PROXY=http://your-proxy:port")
+		logger.Printf("     export NO_PROXY=localhost,127.0.0.1")
+	}
+
 	go func() {
 		logger.Printf("🚀 Claude Code Monitor Server running on http://localhost:%s", cfg.Server.Port)
 		logger.Printf("📡 API endpoints available at:")
@@ -122,6 +142,11 @@ func main() {
 		logger.Printf("🎨 Web UI available at:")
 		logger.Printf("   - GET  http://localhost:%s/ (Request Visualizer)", cfg.Server.Port)
 		logger.Printf("   - GET  http://localhost:%s/api/requests (Request API)", cfg.Server.Port)
+		logger.Println("")
+		logger.Println("👉 To use with Claude Code, run:")
+		logger.Printf("   export ANTHROPIC_BASE_URL=http://localhost:%s", cfg.Server.Port)
+		logger.Println("   claude")
+		logger.Println("")
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatalf("❌ Server failed to start: %v", err)
