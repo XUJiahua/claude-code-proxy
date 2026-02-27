@@ -10,7 +10,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -148,18 +147,6 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSONResponse(w, response)
-}
-
-func (h *Handler) UI(w http.ResponseWriter, r *http.Request) {
-	htmlContent, err := os.ReadFile("index.html")
-	if err != nil {
-		// Error reading index.html
-		http.Error(w, "UI not available", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html")
-	w.Write(htmlContent)
 }
 
 func (h *Handler) GetRequests(w http.ResponseWriter, r *http.Request) {

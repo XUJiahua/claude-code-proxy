@@ -2,16 +2,19 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
+	"github.com/seifghazi/claude-code-monitor/frontend"
 	"github.com/seifghazi/claude-code-monitor/internal/config"
 	"github.com/seifghazi/claude-code-monitor/internal/handler"
 	"github.com/seifghazi/claude-code-monitor/internal/middleware"
@@ -62,15 +65,45 @@ func main() {
 	r.HandleFunc("/v1/models", h.Models).Methods("GET")
 	r.HandleFunc("/health", h.Health).Methods("GET")
 
-	r.HandleFunc("/", h.UI).Methods("GET")
-	r.HandleFunc("/ui", h.UI).Methods("GET")
 	r.HandleFunc("/api/requests", h.GetRequests).Methods("GET")
 	r.HandleFunc("/api/requests", h.DeleteRequests).Methods("DELETE")
 	r.HandleFunc("/api/conversations", h.GetConversations).Methods("GET")
 	r.HandleFunc("/api/conversations/{id}", h.GetConversationByID).Methods("GET")
 	r.HandleFunc("/api/conversations/project", h.GetConversationsByProject).Methods("GET")
 
-	r.NotFoundHandler = http.HandlerFunc(h.NotFound)
+	// Serve embedded frontend assets
+	distFS, err := fs.Sub(frontend.Assets, "dist")
+	if err != nil {
+		logger.Fatalf("❌ Failed to create sub filesystem: %v", err)
+	}
+	fileServer := http.FileServer(http.FS(distFS))
+
+	// Serve static assets (JS, CSS, fonts, etc.)
+	r.PathPrefix("/assets/").Handler(fileServer)
+
+	// SPA fallback: serve index.html for all non-API, non-asset paths
+	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// Let API routes return 404 normally
+		if strings.HasPrefix(req.URL.Path, "/api/") || strings.HasPrefix(req.URL.Path, "/v1/") {
+			h.NotFound(w, req)
+			return
+		}
+		// Try to serve the file directly first (e.g. favicon.ico)
+		f, err := distFS.Open(strings.TrimPrefix(req.URL.Path, "/"))
+		if err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, req)
+			return
+		}
+		// Fall back to index.html for SPA routing
+		indexHTML, err := fs.ReadFile(distFS, "index.html")
+		if err != nil {
+			h.NotFound(w, req)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(indexHTML)
+	})
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
