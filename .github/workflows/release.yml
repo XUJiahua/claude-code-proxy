@@ -35,10 +35,14 @@ jobs:
           rm -rf proxy/frontend/dist
           cp -r web/build/client proxy/frontend/dist
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-cross-action@v5
-        with:
-          version: latest
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run GoReleaser with goreleaser-cross
+        run: |
+          docker run \
+            --rm \
+            -e CGO_ENABLED=1 \
+            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v ${{ github.workspace }}:/go/src/github.com/${{ github.repository }} \
+            -w /go/src/github.com/${{ github.repository }} \
+            ghcr.io/goreleaser/goreleaser-cross:v1.22.7 \
+            release --clean
