@@ -2,10 +2,6 @@ version: 2
 
 project_name: claude-code-proxy
 
-before:
-  hooks:
-    - go mod tidy
-
 builds:
   - id: claude-code-proxy
     dir: proxy
