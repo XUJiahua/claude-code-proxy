@@ -44,5 +44,5 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v ${{ github.workspace }}:/go/src/github.com/${{ github.repository }} \
             -w /go/src/github.com/${{ github.repository }} \
-            ghcr.io/goreleaser/goreleaser-cross:v1.22.7 \
+            ghcr.io/goreleaser/goreleaser-cross:v1.23.6 \
             release --clean
