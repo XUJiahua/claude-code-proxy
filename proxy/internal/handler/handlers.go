@@ -59,6 +59,7 @@ func (h *Handler) Messages(w http.ResponseWriter, r *http.Request) {
 	var req model.AnthropicRequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		log.Printf("❌ Error parsing JSON: %v", err)
+		log.Printf("📋 Raw request body: %s", string(bodyBytes))
 		writeErrorResponse(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
